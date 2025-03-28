@@ -17,6 +17,13 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained();
             $table->decimal('amount', 10);
             $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING);
+            $table->timestamp('processing_started_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamp('failed_at')->nullable();
+            $table->text('failure_reason')->nullable();
+            $table->string('payment_gateway')->nullable();
+            $table->string('payment_id')->nullable();
+            $table->string('payment_status')->nullable();
             $table->timestamps();
         });
     }

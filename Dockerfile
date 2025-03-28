@@ -3,47 +3,65 @@ FROM php:8.2-fpm
 # Set working directory
 WORKDIR /var/www/html
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    locales \
-    zip \
-    jpegoptim optipng pngquant gifsicle \
-    vim \
-    unzip \
     git \
     curl \
-    libzip-dev \
+    libpng-dev \
     libonig-dev \
-    libicu-dev
+    libxml2-dev \
+    zip \
+    unzip \
+    supervisor \
+    procps
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install extensions
-RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl
-RUN docker-php-ext-install gd
-RUN docker-php-ext-configure intl && docker-php-ext-install intl
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Install composer
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Add user for application
-RUN groupadd -g 1000 www
-RUN useradd -u 1000 -ms /bin/bash -g www www
+# Create a new user with specific UID and GID
+RUN groupadd -g 1000 www \
+    && useradd -u 1000 -ms /bin/bash -g www www
 
-# Copy existing application directory contents
-COPY . /var/www/html
+# Create necessary directories
+RUN mkdir -p /var/www/html /tmp/supervisor \
+    && chown -R www:www /var/www/html /tmp/supervisor
 
-# Copy existing application directory permissions
+# Copy application files
 COPY --chown=www:www . /var/www/html
 
-# Change current user to www
+# Set working directory
+WORKDIR /var/www/html
+
+# Install Composer dependencies
+RUN composer install --no-interaction --no-scripts
+
+# Prepare Laravel directories
+RUN mkdir -p storage/framework/sessions \
+    && mkdir -p storage/framework/views \
+    && mkdir -p storage/framework/cache \
+    && mkdir -p bootstrap/cache \
+    && chown -R www:www storage \
+    && chown -R www:www bootstrap/cache \
+    && chmod -R 775 storage \
+    && chmod -R 775 bootstrap/cache
+
+# Copy Supervisor configuration
+COPY .docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+
+# Expose port 9000
+EXPOSE 9000
+
+# Set user
 USER www
 
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

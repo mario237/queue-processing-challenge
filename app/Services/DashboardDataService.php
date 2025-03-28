@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Dashboard;
+namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Repositories\Order\OrderRepositoryInterface;

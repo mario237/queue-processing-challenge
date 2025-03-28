@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use App\Traits\OrderStatusManagement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, OrderStatusManagement;
 
     /**
      * The attributes that are mass assignable.
@@ -32,66 +34,16 @@ class Order extends Model
      */
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status == OrderStatus::PENDING;
     }
 
-    /**
-     * Check if the order is in processing status.
-     */
-    public function isProcessing(): bool
+    public function scopePending($query)
     {
-        return $this->status === 'processing';
+        return $query->where('status', OrderStatus::PENDING);
     }
 
-    /**
-     * Check if the order is in completed status.
-     */
-    public function isCompleted(): bool
+    public function scopeFailed($query)
     {
-        return $this->status === 'completed';
-    }
-
-    /**
-     * Check if the order is in failed status.
-     */
-    public function isFailed(): bool
-    {
-        return $this->status === 'failed';
-    }
-
-    /**
-     * Mark the order as processing.
-     */
-    public function markAsProcessing(): self
-    {
-        $this->update([
-            'status' => 'processing',
-        ]);
-
-        return $this;
-    }
-
-    /**
-     * Mark the order as completed.
-     */
-    public function markAsCompleted(): self
-    {
-        $this->update([
-            'status' => 'completed',
-        ]);
-
-        return $this;
-    }
-
-    /**
-     * Mark the order as failed.
-     */
-    public function markAsFailed(): self
-    {
-        $this->update([
-            'status' => 'failed',
-        ]);
-
-        return $this;
+        return $query->where('status', OrderStatus::FAILED);
     }
 }

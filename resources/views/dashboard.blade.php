@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Processing Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         .status-pending {
             background-color: #6c757d;
@@ -148,9 +150,8 @@
         <div class="card-header">Actions</div>
         <div class="card-body">
             <div class="d-flex gap-2">
-                <a href="#" class="btn btn-primary">Create New Order</a>
-                <a href="#" class="btn btn-secondary">View All Orders</a>
-                <a href="#" class="btn btn-warning">Process Pending Orders</a>
+                <button id="processPendingBtn" class="btn btn-warning">Process Pending Orders</button>
+                <button id="retryFailedBtn" class="btn btn-danger">Retry Failed Orders</button>
             </div>
         </div>
     </div>
@@ -194,6 +195,164 @@
             }
         }
     });
+
+    // Process Pending Orders with SweetAlert confirmation
+    document.getElementById('processPendingBtn').addEventListener('click', function(e) {
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Process Pending Orders',
+            text: 'Are you sure you want to process all pending orders?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, Process Orders!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Setup CSRF token
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing Orders',
+                    text: 'Please wait...',
+                    didOpen: () => {
+                        Swal.showLoading();
+
+                        // Ajax request to process orders
+                        $.ajax({
+                            url: '{{ route("orders.process-pending") }}',
+                            method: 'GET',
+                            timeout: 30000, // 30 second timeout
+                            dataType: 'json', // Explicitly set expected data type
+                            complete: function(xhr, status) {
+                                // Log complete details for debugging
+                                console.log('Response:', xhr.responseText);
+                            },
+                            success: function(response) {
+                                // Success message
+                                Swal.fire({
+                                    title: 'Success!',
+                                    html: `
+                                <p>Order processing initiated successfully.</p>
+                                <p>Total Pending Orders: ${response.data.total_pending_orders}</p>
+                            `,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                });
+                            },
+                            error: function(xhr, status, error) {
+                                // Comprehensive error handling
+                                let errorMessage = 'An unexpected error occurred';
+
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.statusText) {
+                                    errorMessage = xhr.statusText;
+                                }
+
+                                // Error message
+                                Swal.fire({
+                                    title: 'Processing Failed',
+                                    html: `
+                                <p>Failed to process orders.</p>
+                                <p>${errorMessage}</p>
+                            `,
+                                    icon: 'error',
+                                    confirmButtonText: 'Okay'
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Retry Failed Orders with SweetAlert confirmation
+
+    document.getElementById('retryFailedBtn').addEventListener('click', function(e) {
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Process Failed Orders',
+            text: 'Are you sure you want to process all failed orders?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, Process Orders!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Setup CSRF token
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing Orders',
+                    text: 'Please wait...',
+                    didOpen: () => {
+                        Swal.showLoading();
+
+                        // Ajax request to process orders
+                        $.ajax({
+                            url: '{{ route("orders.process-failed") }}',
+                            method: 'GET',
+                            timeout: 30000, // 30 second timeout
+                            dataType: 'json', // Explicitly set expected data type
+                            complete: function(xhr, status) {
+                                // Log complete details for debugging
+                                console.log('Response:', xhr.responseText);
+                            },
+                            success: function(response) {
+                                // Success message
+                                Swal.fire({
+                                    title: 'Success!',
+                                    html: `
+                                <p>Order processing initiated successfully.</p>
+                                <p>Total Failed Orders: ${response.data.total_failed_orders}</p>
+                            `,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                });
+                            },
+                            error: function(xhr, status, error) {
+                                // Comprehensive error handling
+                                let errorMessage = 'An unexpected error occurred';
+
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.statusText) {
+                                    errorMessage = xhr.statusText;
+                                }
+
+                                // Error message
+                                Swal.fire({
+                                    title: 'Processing Failed',
+                                    html: `
+                                <p>Failed to process orders.</p>
+                                <p>${errorMessage}</p>
+                            `,
+                                    icon: 'error',
+                                    confirmButtonText: 'Okay'
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    });
+
 </script>
 </body>
 </html>
