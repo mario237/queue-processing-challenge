@@ -7,10 +7,22 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .status-pending { background-color: #f8f9fa; }
-        .status-processing { background-color: #cfe2ff; }
-        .status-completed { background-color: #d1e7dd; }
-        .status-failed { background-color: #f8d7da; }
+        .status-pending {
+            background-color: #6c757d;
+            color: #f0f0f0;
+        }
+        .status-processing {
+            background-color: #0d6efd;
+            color: #e6f2ff;
+        }
+        .status-completed {
+            background-color: #198754;
+            color: #e6f5ea;
+        }
+        .status-failed {
+            background-color: #dc3545;
+            color: #fbe9ec;
+        }
     </style>
 </head>
 <body>
@@ -76,12 +88,12 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach(['pending', 'processing', 'completed', 'failed'] as $status)
-                            <tr class="status-{{ $status }}">
-                                <td>{{ ucfirst($status) }}</td>
-                                <td>{{ $orderCounts[$status] }}</td>
+                        @foreach($statuses as $status)
+                            <tr class="status-{{ $status->value }}">
+                                <td>{{ $status->label() }}</td>
+                                <td>{{ $orderCounts[$status->value] }}</td>
                                 <td>
-                                    {{ $stats['total'] > 0 ? round(($orderCounts[$status] / $stats['total']) * 100, 1) : 0 }}%
+                                    {{ $stats['total'] > 0 ? round(($orderCounts[$status->value] / $stats['total']) * 100, 1) : 0 }}%
                                 </td>
                             </tr>
                         @endforeach
@@ -114,11 +126,7 @@
                         <td>{{ $order->user->name }}</td>
                         <td>${{ number_format($order->amount, 2) }}</td>
                         <td>
-                                <span class="badge bg-{{
-                                    $order->status === 'pending' ? 'secondary' :
-                                    ($order->status === 'processing' ? 'primary' :
-                                    ($order->status === 'completed' ? 'success' : 'danger'))
-                                }}">
+                                <span class="status-{{ $order->status }}">
                                     {{ ucfirst($order->status) }}
                                 </span>
                         </td>
@@ -154,7 +162,7 @@
     const statusChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Pending', 'Processing', 'Completed', 'Failed'],
+            labels: ['pending', 'processing', 'completed', 'failed'],
             datasets: [{
                 data: [
                     {{ $orderCounts['pending'] }},
@@ -163,16 +171,16 @@
                     {{ $orderCounts['failed'] }}
                 ],
                 backgroundColor: [
-                    '#f8f9fa',
-                    '#cfe2ff',
-                    '#d1e7dd',
-                    '#f8d7da'
+                    '#6c757d',  // Pending
+                    '#0d6efd',  // Processing
+                    '#198754',  // Completed
+                    '#dc3545'   // Failed
                 ],
                 borderColor: [
-                    '#dee2e6',
-                    '#9ec5fe',
-                    '#a3cfbb',
-                    '#f1aeb5'
+                    '#dee2e6',  // Pending
+                    '#9ec5fe',  // Processing
+                    '#a3cfbb',  // Completed
+                    '#f1aeb5'   // Failed
                 ],
                 borderWidth: 1
             }]
