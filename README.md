@@ -1,66 +1,123 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# Docker Setup for Laravel Queue Processing Challenge
 
-## About Laravel
+This branch (`dockerize-app`) focuses solely on adding Docker configuration to the project to enable easy setup and execution of the application.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Docker Configuration
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+The application has been containerized with Docker using the following services:
+- **app**: PHP application container
+- **nginx**: Web server
+- **db**: MySQL database
+- **redis**: Redis for queue processing
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Running the Application with Docker
 
-## Learning Laravel
+### Prerequisites
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Docker
+- Docker Compose
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Setup Instructions
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+1. Clone the repository and switch to the dockerize-app branch:
+   ```bash
+   git clone https://github.com/yourusername/queue-processing-challenge.git
+   cd queue-processing-challenge
+   ```
 
-## Laravel Sponsors
+2. Create the environment file:
+   ```bash
+   cp .env.example .env
+   ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+   Ensure the following environment variables are set correctly in your `.env` file:
+   ```
+   DB_CONNECTION=mysql
+   DB_HOST=db
+   DB_PORT=3306
+   DB_DATABASE=queue_processing_challenge
+   DB_USERNAME=laravel
+   DB_PASSWORD=secret
 
-### Premium Partners
+   REDIS_HOST=redis
+   REDIS_PASSWORD=null
+   REDIS_PORT=6379
+   
+   QUEUE_CONNECTION=redis
+   ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+3. Start the Docker containers:
+   ```bash
+   docker compose up -d
+   ```
 
-## Contributing
+4. Install dependencies:
+   ```bash
+   docker compose exec app composer install
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+5. Generate application key:
+   ```bash
+   docker compose exec app php artisan key:generate
+   ```
 
-## Code of Conduct
+6. Run migrations:
+   ```bash
+   docker compose exec app php artisan migrate
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+7. Access the application:
+   ```
+   http://localhost:8082
+   ```
 
-## Security Vulnerabilities
+### Running Queue Worker
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+To process jobs from the queue:
 
-## License
+```bash
+docker compose exec app php artisan queue:work
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Stopping Containers
+
+When you're done, you can stop the containers:
+
+```bash
+docker compose down
+```
+
+## Docker Configuration Files
+
+- `docker-compose.yml`: Defines services, networks, and volumes
+- `Dockerfile`: PHP application configuration
+- `docker/nginx/conf.d/app.conf`: Nginx web server configuration
+- `docker/php/local.ini`: PHP configuration
+- `docker/mysql/my.cnf`: MySQL configuration
+
+## Troubleshooting Docker Setup
+
+If you encounter issues:
+
+1. Check container status:
+   ```bash
+   docker compose ps
+   ```
+
+2. View container logs:
+   ```bash
+   docker compose logs app
+   docker compose logs nginx
+   docker compose logs db
+   ```
+
+3. Ensure Nginx configuration is correctly mounted:
+   ```bash
+   docker compose exec nginx ls -la /etc/nginx/conf.d/
+   ```
+
+4. Verify database connection:
+   ```bash
+   docker compose exec app php artisan tinker --execute="DB::connection()->getPdo();"
+   ```

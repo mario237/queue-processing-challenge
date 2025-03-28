@@ -1,0 +1,67 @@
+services:
+    # PHP Application
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: queue-processing-app
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+            - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+            - laravel-network
+
+    # Nginx Service
+    nginx:
+        image: nginx:alpine
+        container_name: queue-processing-nginx
+        restart: unless-stopped
+        ports:
+            - "8082:80"
+        volumes:
+            - ./:/var/www/html
+            - ./.docker/nginx/conf.d:/etc/nginx/conf.d
+        networks:
+            - laravel-network
+        depends_on:
+            - app
+
+    # MySQL Service
+    db:
+        image: mysql:8.0
+        container_name: queue-processing-db
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: queue_processing_challenge
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_PASSWORD: secret
+            MYSQL_USER: laravel
+            SERVICE_TAGS: dev
+            SERVICE_NAME: mysql
+        ports:
+            - "3309:3306"
+        volumes:
+            - dbdata:/var/lib/mysql
+            - ./.docker/mysql/my.cnf:/etc/mysql/my.cnf
+        networks:
+            - laravel-network
+
+    # Redis Service (for caching, session, queue)
+    redis:
+        image: redis:alpine
+        container_name: queue-processing-redis
+        restart: unless-stopped
+        ports:
+            - "6378:6379"
+        networks:
+            - laravel-network
+
+networks:
+    laravel-network:
+        driver: bridge
+
+volumes:
+    dbdata:
+        driver: local
