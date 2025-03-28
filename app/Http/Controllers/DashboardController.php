@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Dashboard\DashboardDataService;
+use App\Services\DashboardDataService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {

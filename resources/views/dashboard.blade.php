@@ -4,13 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Processing Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        .status-pending { background-color: #f8f9fa; }
-        .status-processing { background-color: #cfe2ff; }
-        .status-completed { background-color: #d1e7dd; }
-        .status-failed { background-color: #f8d7da; }
+        .status-pending {
+            background-color: #6c757d;
+            color: #f0f0f0;
+        }
+        .status-processing {
+            background-color: #0d6efd;
+            color: #e6f2ff;
+        }
+        .status-completed {
+            background-color: #198754;
+            color: #e6f5ea;
+        }
+        .status-failed {
+            background-color: #dc3545;
+            color: #fbe9ec;
+        }
     </style>
 </head>
 <body>
@@ -76,12 +90,12 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach(['pending', 'processing', 'completed', 'failed'] as $status)
-                            <tr class="status-{{ $status }}">
-                                <td>{{ ucfirst($status) }}</td>
-                                <td>{{ $orderCounts[$status] }}</td>
+                        @foreach($statuses as $status)
+                            <tr class="status-{{ $status->value }}">
+                                <td>{{ $status->label() }}</td>
+                                <td>{{ $orderCounts[$status->value] }}</td>
                                 <td>
-                                    {{ $stats['total'] > 0 ? round(($orderCounts[$status] / $stats['total']) * 100, 1) : 0 }}%
+                                    {{ $stats['total'] > 0 ? round(($orderCounts[$status->value] / $stats['total']) * 100, 1) : 0 }}%
                                 </td>
                             </tr>
                         @endforeach
@@ -114,11 +128,7 @@
                         <td>{{ $order->user->name }}</td>
                         <td>${{ number_format($order->amount, 2) }}</td>
                         <td>
-                                <span class="badge bg-{{
-                                    $order->status === 'pending' ? 'secondary' :
-                                    ($order->status === 'processing' ? 'primary' :
-                                    ($order->status === 'completed' ? 'success' : 'danger'))
-                                }}">
+                                <span class="status-{{ $order->status }}">
                                     {{ ucfirst($order->status) }}
                                 </span>
                         </td>
@@ -140,9 +150,8 @@
         <div class="card-header">Actions</div>
         <div class="card-body">
             <div class="d-flex gap-2">
-                <a href="#" class="btn btn-primary">Create New Order</a>
-                <a href="#" class="btn btn-secondary">View All Orders</a>
-                <a href="#" class="btn btn-warning">Process Pending Orders</a>
+                <button id="processPendingBtn" class="btn btn-warning">Process Pending Orders</button>
+                <button id="retryFailedBtn" class="btn btn-danger">Retry Failed Orders</button>
             </div>
         </div>
     </div>
@@ -154,7 +163,7 @@
     const statusChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Pending', 'Processing', 'Completed', 'Failed'],
+            labels: ['pending', 'processing', 'completed', 'failed'],
             datasets: [{
                 data: [
                     {{ $orderCounts['pending'] }},
@@ -163,16 +172,16 @@
                     {{ $orderCounts['failed'] }}
                 ],
                 backgroundColor: [
-                    '#f8f9fa',
-                    '#cfe2ff',
-                    '#d1e7dd',
-                    '#f8d7da'
+                    '#6c757d',  // Pending
+                    '#0d6efd',  // Processing
+                    '#198754',  // Completed
+                    '#dc3545'   // Failed
                 ],
                 borderColor: [
-                    '#dee2e6',
-                    '#9ec5fe',
-                    '#a3cfbb',
-                    '#f1aeb5'
+                    '#dee2e6',  // Pending
+                    '#9ec5fe',  // Processing
+                    '#a3cfbb',  // Completed
+                    '#f1aeb5'   // Failed
                 ],
                 borderWidth: 1
             }]
@@ -186,6 +195,164 @@
             }
         }
     });
+
+    // Process Pending Orders with SweetAlert confirmation
+    document.getElementById('processPendingBtn').addEventListener('click', function(e) {
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Process Pending Orders',
+            text: 'Are you sure you want to process all pending orders?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, Process Orders!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Setup CSRF token
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing Orders',
+                    text: 'Please wait...',
+                    didOpen: () => {
+                        Swal.showLoading();
+
+                        // Ajax request to process orders
+                        $.ajax({
+                            url: '{{ route("orders.process-pending") }}',
+                            method: 'GET',
+                            timeout: 30000, // 30 second timeout
+                            dataType: 'json', // Explicitly set expected data type
+                            complete: function(xhr, status) {
+                                // Log complete details for debugging
+                                console.log('Response:', xhr.responseText);
+                            },
+                            success: function(response) {
+                                // Success message
+                                Swal.fire({
+                                    title: 'Success!',
+                                    html: `
+                                <p>Order processing initiated successfully.</p>
+                                <p>Total Pending Orders: ${response.data.total_pending_orders}</p>
+                            `,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                });
+                            },
+                            error: function(xhr, status, error) {
+                                // Comprehensive error handling
+                                let errorMessage = 'An unexpected error occurred';
+
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.statusText) {
+                                    errorMessage = xhr.statusText;
+                                }
+
+                                // Error message
+                                Swal.fire({
+                                    title: 'Processing Failed',
+                                    html: `
+                                <p>Failed to process orders.</p>
+                                <p>${errorMessage}</p>
+                            `,
+                                    icon: 'error',
+                                    confirmButtonText: 'Okay'
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Retry Failed Orders with SweetAlert confirmation
+
+    document.getElementById('retryFailedBtn').addEventListener('click', function(e) {
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Process Failed Orders',
+            text: 'Are you sure you want to process all failed orders?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, Process Orders!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Setup CSRF token
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing Orders',
+                    text: 'Please wait...',
+                    didOpen: () => {
+                        Swal.showLoading();
+
+                        // Ajax request to process orders
+                        $.ajax({
+                            url: '{{ route("orders.process-failed") }}',
+                            method: 'GET',
+                            timeout: 30000, // 30 second timeout
+                            dataType: 'json', // Explicitly set expected data type
+                            complete: function(xhr, status) {
+                                // Log complete details for debugging
+                                console.log('Response:', xhr.responseText);
+                            },
+                            success: function(response) {
+                                // Success message
+                                Swal.fire({
+                                    title: 'Success!',
+                                    html: `
+                                <p>Order processing initiated successfully.</p>
+                                <p>Total Failed Orders: ${response.data.total_failed_orders}</p>
+                            `,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                });
+                            },
+                            error: function(xhr, status, error) {
+                                // Comprehensive error handling
+                                let errorMessage = 'An unexpected error occurred';
+
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.statusText) {
+                                    errorMessage = xhr.statusText;
+                                }
+
+                                // Error message
+                                Swal.fire({
+                                    title: 'Processing Failed',
+                                    html: `
+                                <p>Failed to process orders.</p>
+                                <p>${errorMessage}</p>
+                            `,
+                                    icon: 'error',
+                                    confirmButtonText: 'Okay'
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    });
+
 </script>
 </body>
 </html>

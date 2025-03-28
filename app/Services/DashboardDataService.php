@@ -1,24 +1,15 @@
 <?php
 
-namespace App\Services\Dashboard;
+namespace App\Services;
 
-use App\Repositories\OrderRepositoryInterface;
+use App\Enums\OrderStatus;
+use App\Repositories\Order\OrderRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 class DashboardDataService
 {
-    /**
-     * The order repository instance.
-     *
-     * @var OrderRepositoryInterface
-     */
-    protected OrderRepositoryInterface $orderRepository;
 
-    /**
-     * Create a new service instance.
-     *
-     * @param OrderRepositoryInterface $orderRepository
-     */
+    protected OrderRepositoryInterface $orderRepository;
     public function __construct(OrderRepositoryInterface $orderRepository)
     {
         $this->orderRepository = $orderRepository;
@@ -35,6 +26,7 @@ class DashboardDataService
             'orderCounts' => $this->getOrderCountsByStatus(),
             'recentOrders' => $this->getRecentOrders(),
             'stats' => $this->getOrderStatistics(),
+            'statuses' => OrderStatus::cases(),
         ];
     }
 
@@ -48,14 +40,13 @@ class DashboardDataService
         $orderCounts = $this->orderRepository->getCountsByStatus();
 
         // Ensure all statuses have a count (default to 0)
-        $statuses = ['pending', 'processing', 'completed', 'failed'];
-        foreach ($statuses as $status) {
-            if (!isset($orderCounts[$status])) {
-                $orderCounts[$status] = 0;
-            }
+        $result = [];
+        foreach (OrderStatus::cases() as $status) {
+            $statusValue = $status->value;
+            $result[$statusValue] = $orderCounts[$statusValue] ?? 0;
         }
 
-        return $orderCounts;
+        return $result;
     }
 
     /**
@@ -77,8 +68,8 @@ class DashboardDataService
     protected function getOrderStatistics(): array
     {
         $orderCounts = $this->getOrderCountsByStatus();
-        $totalCompleted = $orderCounts['completed'] ?? 0;
-        $totalFailed = $orderCounts['failed'] ?? 0;
+        $totalCompleted = $orderCounts[OrderStatus::COMPLETED->value] ?? 0;
+        $totalFailed = $orderCounts[OrderStatus::FAILED->value] ?? 0;
         $completedAndFailed = $totalCompleted + $totalFailed;
 
         return [
