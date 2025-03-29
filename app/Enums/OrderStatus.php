@@ -33,18 +33,4 @@ enum OrderStatus: string
             self::FAILED => 'Failed',
         };
     }
-    /**
-     * Get the CSS class associated with this status.
-     *
-     * @return string
-     */
-    public function cssClass(): string
-    {
-        return match($this) {
-            self::PENDING => 'bg-secondary',
-            self::PROCESSING => 'bg-primary',
-            self::COMPLETED => 'bg-success',
-            self::FAILED => 'bg-danger',
-        };
-    }
 }

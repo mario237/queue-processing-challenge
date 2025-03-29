@@ -22,7 +22,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+RUN pecl install redis && docker-php-ext-enable redis &&  pecl install xdebug && docker-php-ext-enable xdebug
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -56,6 +56,8 @@ RUN mkdir -p storage/framework/sessions \
 
 # Copy Supervisor configuration
 COPY .docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY .docker/php/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 
 # Expose port 9000

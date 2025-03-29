@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\PayPalPaymentService;
 use Exception;
@@ -110,8 +111,8 @@ class CreatePayment implements ShouldQueue
             // Mark order as failed on last attempt
             if ($this->attempts() >= $this->tries) {
                 $this->order->update([
-                    'payment_status' => 'failed',
-                    'status' => 'payment_failed'
+                    'payment_status' =>  OrderStatus::FAILED->value,
+                    'status' =>  OrderStatus::FAILED->value
                 ]);
             }
 
@@ -127,8 +128,8 @@ class CreatePayment implements ShouldQueue
     {
         // Ensure order is marked as failed
         $this->order->update([
-            'payment_status' => 'failed',
-            'status' => 'payment_failed'
+            'payment_status' =>  OrderStatus::FAILED->value,
+            'status' =>  OrderStatus::FAILED->value
         ]);
 
         // Log comprehensive failure details

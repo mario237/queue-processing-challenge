@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\PayPalPaymentService;
 use Exception;
@@ -40,8 +41,8 @@ class PayPalController extends Controller
 
             // Payment failed
             $order->update([
-                'status' => 'payment_failed',
-                'payment_status' => 'failed'
+                'payment_status' => OrderStatus::FAILED->value,
+                'status' =>  OrderStatus::FAILED->value
             ]);
 
             return redirect()->route('payment.failed')

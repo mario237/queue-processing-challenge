@@ -34,16 +34,16 @@ class Order extends Model
      */
     public function isPending(): bool
     {
-        return $this->status == OrderStatus::PENDING;
+        return $this->status === OrderStatus::PENDING->value;
     }
 
     public function scopePending($query)
     {
-        return $query->where('status', OrderStatus::PENDING);
+        return $query->where('status', OrderStatus::PENDING->value);
     }
 
     public function scopeFailed($query)
     {
-        return $query->where('status', OrderStatus::FAILED);
+        return $query->where('status', OrderStatus::FAILED->value);
     }
 }
