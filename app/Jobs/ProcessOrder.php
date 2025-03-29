@@ -49,7 +49,7 @@ class ProcessOrder implements ShouldQueue
      * @throws Exception
      * @throws Throwable
      */
-    public function handle(): ?string
+    public function handle()
     {
         // Begin a database transaction for atomicity
         DB::beginTransaction();
@@ -64,6 +64,7 @@ class ProcessOrder implements ShouldQueue
                 ]);
 
                 DB::rollBack();
+                return;
             }
 
             // Verbose logging
@@ -103,7 +104,6 @@ class ProcessOrder implements ShouldQueue
             // Re-throw the exception to trigger job retry
             throw $e;
         }
-        return null;
     }
 
     /**
